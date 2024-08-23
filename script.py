@@ -14,7 +14,6 @@ from bs4 import BeautifulSoup
 
 file = None  # Define file at the top
 
-
 # Setup a signal handler to close the driver on CTRL+C
 def signal_handler(sig, frame):
     logout()
@@ -45,12 +44,18 @@ def logout():
         print(f"Error during logout: {e}")
 
 
-signal.signal(signal.SIGINT, signal_handler)
+
+#signal.signal(signal.SIGINT, signal_handler)
+
+# Replace with the path to your WebDriver executable
+driver_path = '/Users/namankhurpia/Desktop/Taxmann/chromedriver-mac-arm64/chromedriver'  # Update this path to your ChromeDriver
+
+# Initialize the WebDriver using Service
+service = Service(driver_path)
+driver = webdriver.Chrome(service=service)
 
 try:
-    # Set up the Chrome Driver
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
-
+    
     # Open the webpage
     driver.get('https://www.taxmann.com/gp/auth/login')
 
@@ -76,24 +81,30 @@ try:
 
     # Click the 'Sign In' button
     sign_in_button = WebDriverWait(driver, 10).until(
-        EC.element_to_be_clickable((By.XPATH, "button.btn-orange-bg-1"))
-    )
+    EC.element_to_be_clickable((By.XPATH, "//button[@aria-label='Sign In' and @type='submit' and contains(@class, 'button-primary')]")))
     sign_in_button.click()
 
-    # Wait for 30 seconds
-    driver.implicitly_wait(10)
 
 
-    # Navigate to the main GST caselaws page after login
+
+
+    # Wait for the page to load after login
+    WebDriverWait(driver, 30).until(
+        EC.url_changes(driver.current_url)  # Wait for the URL to change after login
+    )
+
+    # After login, navigate to the GST caselaws page
     driver.get('https://www.taxmann.com/research/gst/caselaws')
-    
 
-    # Wait for the page to load and JavaScript to execute
+    # Wait for the page to load and ensure it is fully loaded
     WebDriverWait(driver, 90).until(
         EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
     )
 
-    
+
+
+
+
 
 
     # Find the 'Category' span and hover over it
@@ -139,46 +150,43 @@ try:
         
         # Wait to ensure the page has loaded the content
         WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, ".prev-window"))
+            EC.presence_of_element_located((By.XPATH, "//*[@id='home' and not(@hidden)]"))
         )
-        
-        # Extract the content
-        content = driver.find_element(By.CSS_SELECTOR, ".prev-window").text
 
-        
-        print("added" + title_text + "with content :" + content[:10])
-
-
-        #trying bs4---------
+        # Extract the content using BeautifulSoup
         html_content = driver.page_source
-
-        # Use BeautifulSoup to parse the loaded HTML
         soup = BeautifulSoup(html_content, 'html.parser')
 
-        # Now use BeautifulSoup to find the dynamically changing content
-        content_div = soup.find(id=lambda x: x and x.startswith('previewSection'))
+        # Find the active content that does not have the hidden attribute
+        content_div = soup.find("div", {"id": "home", "hidden": False})
+
         if content_div:
-            print(content_div.text)
+            content_text = content_div.text.strip()
+            print(f"Added: {title_text} with content: {content_text[:100]}")
 
-        #trying bs4---------
+            # Write data to CSV immediately
+            writer.writerow([title_text, content_text])
+        else:
+            print(f"Content not found for: {title_text}")
 
-        # Navigate back or close the current view to return to the list
-        writer.writerow([title_text, content_div.text])  # Write data to CSV immediately
-        
         time.sleep(20)  # Allow time for the page to reload the list
+
+        # Refresh the titles list after each iteration
         titles = WebDriverWait(driver, 30).until(
             EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".list-h-1"))
         )
     
-    logout()
 
 finally:
     logout()
+    if 'driver' in locals() or 'driver' in globals():
+        if driver is not None:
+            driver.quit()
     if file is not None:
-        file.close() 
-    driver.quit()
+        file.close()
 
     print('Driver closed successfully.')
+
 
 
 
