@@ -30,6 +30,7 @@ def logout():
             EC.element_to_be_clickable((By.CSS_SELECTOR, "svg.active-user"))
         )
         profile_icon.click()
+        
 
         # Wait for the logout link and click it
         logout_link = WebDriverWait(driver, 60).until(
