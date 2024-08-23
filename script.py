@@ -131,6 +131,28 @@ try:
 
     time.sleep(10)  
 
+
+    # Find the 'Category' span and hover over it
+    category_span = WebDriverWait(driver, 30).until(
+        EC.visibility_of_element_located((By.XPATH, "//span[@title='Court']"))
+    )
+    ActionChains(driver).move_to_element(category_span).perform()
+
+    time.sleep(2)  # Wait for the dropdown to load
+
+
+    # Attempt to click 'GST' option by targeting the enclosing <a> tag
+    try:
+        supreme = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, "//a[contains(@class, 'dropdown-item') and .//label[@title='SC']]"))
+        )
+        supreme.click()
+    except TimeoutException:
+        print("GST option not clickable using normal methods, attempting JavaScript click.")
+        driver.execute_script("arguments[0].click();", supreme)
+
+    time.sleep(10)  
+
     # Wait for the titles to load
     titles = WebDriverWait(driver, 30).until(
         EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".list-h-1"))
