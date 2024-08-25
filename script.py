@@ -6,11 +6,10 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
-import signal
-import csv
 
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.action_chains import ActionChains
-from bs4 import BeautifulSoup
+
 
 file = None  # Define file at the top
 
@@ -138,44 +137,62 @@ try:
     )
 
 
-    # Open a CSV file to write the case data
-    file = open('case_data.csv', 'w', newline='', encoding='utf-8')
-    writer = csv.writer(file)
-    writer.writerow(['Title', 'Content'])
 
 
-    for title in titles:
-        title_text = title.text
-        title.click()  # Click on the title
-        time.sleep(5)
+
+    num_articles = 200
+
+    for i in range(num_articles):
+        try:
+            # Wait for the preloader to disappear (adjust the selector if needed)
+            WebDriverWait(driver, 30).until(
+                EC.invisibility_of_element_located((By.CSS_SELECTOR, ".preloader.ng-star-inserted"))
+            )
+            
+            # Refresh the titles list to ensure the element is clickable
+            titles = WebDriverWait(driver, 30).until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".list-h-1"))
+            )
+            
+            # Find and click on the title
+            titles[i].click()
+            time.sleep(20)
+            
+            # Wait for the download button to be clickable
+            download_button = WebDriverWait(driver, 30).until(
+                EC.element_to_be_clickable((By.XPATH, "//div[@id='home' and not(@hidden)]//span[contains(@class, 'menu-box-list') and .//img[@title='download']]"))
+            )
+            download_button.click()
+
+            # Wait for the download options to appear and click on the PDF option
+            pdf_download_link = WebDriverWait(driver, 30).until(
+                EC.element_to_be_clickable((By.XPATH, "//li/a[contains(text(), 'PDF')]"))
+            )
+            pdf_download_link.click()
+            
+            # Wait for the download to complete
+            time.sleep(15)  # Adjust as needed
+
+        except Exception as e:
+            print(f"An error occurred for article {i+1}: {e}")
+
+            
+                
+        # Wait for the download to complete (this may need adjustment depending on your download process)
+        #time.sleep(10)  # Adjust this time as needed
         
-        # Wait to ensure the page has loaded the content
-        WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.XPATH, "//*[@id='home' and not(@hidden)]"))
-        )
+        # Scroll to the next title
+        #if i < num_articles - 1:
+        #    next_title = titles[i + 1]
+        #    driver.execute_script("arguments[0].scrollIntoView(true);", next_title)
+        
+        #time.sleep(2)  # Give time for the scroll and any transitions
+        
+        # Refresh the titles list to ensure proper indexing
+        #titles = WebDriverWait(driver, 30).until(
+        #    EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".list-h-1"))
+        #)
 
-        # Extract the content using BeautifulSoup
-        html_content = driver.page_source
-        soup = BeautifulSoup(html_content, 'html.parser')
-
-        # Find the active content that does not have the hidden attribute
-        content_div = soup.find("div", {"id": "home", "hidden": False})
-
-        if content_div:
-            content_text = content_div.text.strip()
-            print(f"Added: {title_text} with content: {content_text[:100]}")
-
-            # Write data to CSV immediately
-            writer.writerow([title_text, content_text])
-        else:
-            print(f"Content not found for: {title_text}")
-
-        time.sleep(20)  # Allow time for the page to reload the list
-
-        # Refresh the titles list after each iteration
-        titles = WebDriverWait(driver, 30).until(
-            EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".list-h-1"))
-        )
     
 
 finally:
