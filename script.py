@@ -132,7 +132,6 @@ try:
     time.sleep(10)  
 
 
-
     # Find the 'Category' span and hover over it
     category_span = WebDriverWait(driver, 30).until(
         EC.visibility_of_element_located((By.XPATH, "//span[@title='Court']"))
@@ -153,8 +152,6 @@ try:
         driver.execute_script("arguments[0].click();", supreme)
 
     time.sleep(10)  
-
-
 
 
 
